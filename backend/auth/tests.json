@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "Register new user",
+      "method": "POST",
+      "path": "/?path=/register",
+      "body": {
+        "email": "test@example.com",
+        "password": "password123",
+        "full_name": "Test User",
+        "phone": "+7 999 123-45-67"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "token": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Verify token",
+      "method": "GET",
+      "path": "/?path=/verify",
+      "headers": {
+        "X-Auth-Token": "test_token"
+      },
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

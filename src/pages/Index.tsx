@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
+import { AuthDialog } from '@/components/AuthDialog';
+import { authApi, User } from '@/lib/auth';
+import { ordersApi } from '@/lib/orders';
+import { useToast } from '@/hooks/use-toast';
 
 interface Product {
   id: number;
@@ -24,6 +31,18 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const savedUser = authApi.getUser();
+    if (savedUser) {
+      setUser(savedUser);
+    }
+  }, []);
 
   const products: Product[] = [
     {
@@ -93,6 +112,43 @@ const Index = () => {
     ? products
     : products.filter(p => p.category === selectedCategory);
 
+  const handleCheckout = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!user) {
+      setAuthDialogOpen(true);
+      toast({ title: 'Войдите, чтобы оформить заказ' });
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+    const delivery_address = formData.get('address') as string;
+    const delivery_phone = formData.get('phone') as string;
+
+    try {
+      await ordersApi.createOrder({
+        user_id: user.id,
+        items: cart,
+        total_amount: cartTotal,
+        delivery_address,
+        delivery_phone,
+        payment_method: 'card'
+      });
+
+      toast({ title: 'Заказ оформлен!', description: 'Мы свяжемся с вами в ближайшее время' });
+      setCart([]);
+      setCheckoutOpen(false);
+    } catch (error) {
+      toast({ title: 'Ошибка оформления', variant: 'destructive' });
+    }
+  };
+
+  const handleLogout = () => {
+    authApi.logout();
+    setUser(null);
+    toast({ title: 'Вы вышли из аккаунта' });
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-50 bg-white border-b border-border">
@@ -120,7 +176,25 @@ const Index = () => {
               ))}
             </nav>
 
-            <Sheet>
+            <div className="flex items-center gap-2">
+              {user ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => user.role === 'admin' ? navigate('/admin') : null}>
+                    <Icon name="User" size={16} className="mr-2" />
+                    {user.full_name || user.email}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleLogout}>
+                    <Icon name="LogOut" size={16} />
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => setAuthDialogOpen(true)}>
+                  <Icon name="User" size={16} className="mr-2" />
+                  Войти
+                </Button>
+              )}
+
+              <Sheet open={checkoutOpen} onOpenChange={setCheckoutOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
                   <Icon name="ShoppingBag" size={20} />
@@ -188,18 +262,51 @@ const Index = () => {
                           <span>Итого:</span>
                           <span>{cartTotal.toLocaleString('ru-RU')} ₽</span>
                         </div>
-                        <Button className="w-full bg-primary hover:bg-primary/90">
-                          Оформить заказ
-                        </Button>
+                        
+                        {user ? (
+                          <form onSubmit={handleCheckout} className="space-y-3 mt-4">
+                            <div>
+                              <Label htmlFor="address">Адрес доставки</Label>
+                              <Input id="address" name="address" required placeholder="Москва, ул. Примерная, 1" />
+                            </div>
+                            <div>
+                              <Label htmlFor="phone">Телефон</Label>
+                              <Input id="phone" name="phone" type="tel" required placeholder="+7 999 123-45-67" />
+                            </div>
+                            <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
+                              Оформить заказ
+                            </Button>
+                          </form>
+                        ) : (
+                          <Button 
+                            className="w-full bg-primary hover:bg-primary/90"
+                            onClick={() => {
+                              setAuthDialogOpen(true);
+                              setCheckoutOpen(false);
+                            }}
+                          >
+                            Войти для оформления
+                          </Button>
+                        )}
                       </div>
                     </>
                   )}
                 </div>
               </SheetContent>
             </Sheet>
+            </div>
           </div>
         </div>
       </header>
+
+      <AuthDialog 
+        open={authDialogOpen} 
+        onOpenChange={setAuthDialogOpen}
+        onSuccess={() => {
+          const savedUser = authApi.getUser();
+          setUser(savedUser);
+        }}
+      />
 
       {activeSection === 'home' && (
         <div className="animate-fade-in">

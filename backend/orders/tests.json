@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "name": "Create new order",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "user_id": 1,
+        "items": [
+          {
+            "id": 1,
+            "name": "Test Product",
+            "price": 1000,
+            "quantity": 1,
+            "selectedSize": "M"
+          }
+        ],
+        "total_amount": 1000,
+        "delivery_address": "Moscow, Test Street 1",
+        "delivery_phone": "+7 999 123-45-67",
+        "payment_method": "card"
+      },
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get all orders",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
