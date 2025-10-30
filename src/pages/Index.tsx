@@ -179,10 +179,16 @@ const Index = () => {
             <div className="flex items-center gap-2">
               {user ? (
                 <>
-                  <Button variant="ghost" size="sm" onClick={() => user.role === 'admin' ? navigate('/admin') : null}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
                     <Icon name="User" size={16} className="mr-2" />
                     {user.full_name || user.email}
                   </Button>
+                  {user.role === 'admin' && (
+                    <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
+                      <Icon name="Settings" size={16} className="mr-2" />
+                      Админ
+                    </Button>
+                  )}
                   <Button variant="ghost" size="icon" onClick={handleLogout}>
                     <Icon name="LogOut" size={16} />
                   </Button>
